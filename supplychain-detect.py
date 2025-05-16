@@ -56,7 +56,7 @@ def print_event(cpu, data, size):
         event.path.decode(errors='replace')))
 
 b["events"].open_perf_buffer(print_event)
-print("fush")
+print("fush fasdfas")
 while True:
     try:
         b.perf_buffer_poll()
